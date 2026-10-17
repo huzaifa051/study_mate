@@ -3,6 +3,7 @@ import '../models/study_task.dart';
 import '../theme/app_theme.dart';
 import '../theme/app_colors.dart';
 import '../services/storage_service.dart';
+import 'add_task_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -49,15 +50,16 @@ class _HomeScreenState extends State<HomeScreen> {
     _saveTasks();
   }
 
-  void _addSampleTask() {
+  Future<void> _openAddTask() async {
+    final newTask = await Navigator.push<StudyTask>(
+      context,
+      MaterialPageRoute(builder: (context) => const AddTaskScreen()),
+    );
+
+    if (newTask == null || !mounted) return;
+
     setState(() {
-      _tasks.add(
-        StudyTask(
-          title: 'Sample task ${_tasks.length + 1}',
-          subject: 'Flutter',
-          dueDate: DateTime.now().add(const Duration(days: 1)),
-        ),
-      );
+      _tasks.add(newTask);
     });
     _saveTasks();
   }
@@ -220,7 +222,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _addSampleTask,
+        onPressed: _openAddTask,
         backgroundColor: AppColors.clay,
         foregroundColor: Colors.white,
         shape: const CircleBorder(),
