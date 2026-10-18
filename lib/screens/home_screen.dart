@@ -4,6 +4,7 @@ import '../theme/app_theme.dart';
 import '../theme/app_colors.dart';
 import '../services/storage_service.dart';
 import 'add_task_screen.dart';
+import 'task_details_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -62,6 +63,28 @@ class _HomeScreenState extends State<HomeScreen> {
       _tasks.add(newTask);
     });
     _saveTasks();
+  }
+
+  Future<void> _openDetails(StudyTask task) async {
+    final action = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => TaskDetailsScreen(
+          task: task,
+          onChanged: _saveTasks,
+        ),
+      ),
+    );
+
+    if (!mounted) return;
+
+    if (action == 'toggle') {
+      _toggleTask(task);
+    } else if (action == 'delete') {
+      _deleteTasks(task);
+    } else {
+      setState(() {});
+    }
   }
 
   int get _completedCount => _tasks.where((t) => t.isCompleted).length;
@@ -212,6 +235,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               return _TaskRow(
                                 task: task,
                                 dueText: _formatDue(task.dueDate),
+                                onTap: () => _openDetails(task),
                                 onToggle: () => _toggleTask(task),
                                 onDelete: () => _deleteTasks(task),
                               );
@@ -235,101 +259,107 @@ class _HomeScreenState extends State<HomeScreen> {
 class _TaskRow extends StatelessWidget {
   final StudyTask task;
   final String dueText;
+  final VoidCallback onTap;
   final VoidCallback onToggle;
   final VoidCallback onDelete;
 
   const _TaskRow({
     required this.task,
     required this.dueText,
+    required this.onTap,
     required this.onToggle,
     required this.onDelete,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: const BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: AppColors.hairline, width: 0.8),
-        ),
-      ),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: onToggle,
-            child: Container(
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: task.isCompleted ? AppColors.forest : Colors.transparent,
-                border: Border.all(
-                  color: task.isCompleted ? AppColors.forest : AppColors.muted,
-                  width: 1.5,
-                ),
-              ),
-              child: task.isCompleted
-                  ? const Icon(Icons.check, size: 15, color: AppColors.stone)
-                  : null,
-            ),
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: const BoxDecoration(
+          border: Border(
+            bottom: BorderSide(color: AppColors.hairline, width: 0.8),
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  task.title,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                    color: task.isCompleted
-                        ? AppColors.muted
-                        : AppColors.charcoal,
-                    decoration: task.isCompleted
-                        ? TextDecoration.lineThrough
-                        : null,
+        ),
+        child: Row(
+          children: [
+            GestureDetector(
+              onTap: onToggle,
+              child: Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: task.isCompleted ? AppColors.forest : Colors.transparent,
+                  border: Border.all(
+                    color: task.isCompleted ? AppColors.forest : AppColors.muted,
+                    width: 1.5,
                   ),
                 ),
-                const SizedBox(height: 5),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 9,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.sand,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        task.subject,
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      task.isOverdue ? 'Overdue . $dueText' : 'Due $dueText',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: task.isOverdue
-                            ? AppColors.clay
-                            : AppColors.muted,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                child: task.isCompleted
+                    ? const Icon(Icons.check, size: 15, color: AppColors.stone)
+                    : null,
+              ),
             ),
-          ),
-          IconButton(
-            onPressed: onDelete,
-            icon: const Icon(Icons.delete_outline, color: AppColors.muted),
-          ),
-        ],
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    task.title,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: task.isCompleted
+                          ? AppColors.muted
+                          : AppColors.charcoal,
+                      decoration: task.isCompleted
+                          ? TextDecoration.lineThrough
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 9,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.sand,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          task.subject,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        task.isOverdue ? 'Overdue . $dueText' : 'Due $dueText',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: task.isOverdue
+                              ? AppColors.clay
+                              : AppColors.muted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              onPressed: onDelete,
+              icon: const Icon(Icons.delete_outline, color: AppColors.muted),
+            ),
+          ],
+        ),
       ),
     );
   }

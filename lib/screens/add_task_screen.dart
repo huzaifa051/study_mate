@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import '../models/study_task.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
-import '../models/study_task.dart';
 
 class AddTaskScreen extends StatefulWidget {
   const AddTaskScreen({super.key});
@@ -13,6 +13,7 @@ class AddTaskScreen extends StatefulWidget {
 class _AddTaskScreenState extends State<AddTaskScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
+  final _subtaskController = TextEditingController();
 
   final List<String> _subjects = [
     'Dart',
@@ -22,14 +23,17 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     'Other',
   ];
   final List<String> _priorities = ['Low', 'Medium', 'High'];
+  final List<String> _subtaskTitles = [];
 
   String _subject = 'Dart';
   String _priority = 'Medium';
   DateTime _dueDate = DateTime.now().add(const Duration(days: 1));
+  TimeOfDay _dueTime = const TimeOfDay(hour: 16, minute: 0);
 
   @override
   void dispose() {
     _titleController.dispose();
+    _subtaskController.dispose();
     super.dispose();
   }
 
@@ -54,9 +58,9 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
+      initialDate: _dueDate,
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365)),
-      initialDate: _dueDate,
     );
     if (picked != null) {
       setState(() {
@@ -65,16 +69,82 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     }
   }
 
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _dueTime,
+    );
+    if (picked != null) {
+      setState(() {
+        _dueTime = picked;
+      });
+    }
+  }
+
+  void _addSubtask() {
+    final text = _subtaskController.text.trim();
+    if (text.isEmpty) return;
+    setState(() {
+      _subtaskTitles.add(text);
+      _subtaskController.clear();
+    });
+  }
+
   void _saveTask() {
     if (_formKey.currentState!.validate()) {
+      final dueDateTime = DateTime(
+        _dueDate.year,
+        _dueDate.month,
+        _dueDate.day,
+        _dueTime.hour,
+        _dueTime.minute,
+      );
+
       final task = StudyTask(
         title: _titleController.text.trim(),
         subject: _subject,
-        dueDate: _dueDate,
+        dueDate: dueDateTime,
         priority: _priority,
+        subtasks: _subtaskTitles.map((t) => Subtask(title: t)).toList(),
       );
       Navigator.pop(context, task);
     }
+  }
+
+  Widget _pickerRow({
+    required IconData icon,
+    required String label,
+    required String value,
+    required VoidCallback onTap,
+    bool showTopBorder = false,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          border: Border(
+            top: showTopBorder
+                ? const BorderSide(color: AppColors.hairline)
+                : BorderSide.none,
+            bottom: const BorderSide(color: AppColors.hairline),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: AppColors.forest),
+            const SizedBox(width: 12),
+            Text(label, style: const TextStyle(fontSize: 15)),
+            const Spacer(),
+            Text(
+              value,
+              style: const TextStyle(color: AppColors.muted, fontSize: 15),
+            ),
+            const Icon(Icons.chevron_right, color: AppColors.muted),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -94,6 +164,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                     children: [
                       Text('New task', style: AppTheme.serif(32)),
                       const SizedBox(height: 24),
+
                       TextFormField(
                         controller: _titleController,
                         textCapitalization: TextCapitalization.sentences,
@@ -149,43 +220,19 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                         }).toList(),
                       ),
                       const SizedBox(height: 28),
-                      InkWell(
+
+                      _pickerRow(
+                        icon: Icons.calendar_today_outlined,
+                        label: 'Due date',
+                        value: _formatDate(_dueDate),
                         onTap: _pickDate,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          decoration: const BoxDecoration(
-                            border: Border(
-                              bottom: BorderSide(color: AppColors.hairline),
-                              top: BorderSide(color: AppColors.hairline),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.calendar_today_outlined,
-                                size: 20,
-                                color: AppColors.forest,
-                              ),
-                              const SizedBox(width: 12),
-                              const Text(
-                                'Due date',
-                                style: TextStyle(fontSize: 15),
-                              ),
-                              const Spacer(),
-                              Text(
-                                _formatDate(_dueDate),
-                                style: const TextStyle(
-                                  color: AppColors.muted,
-                                  fontSize: 15,
-                                ),
-                              ),
-                              const Icon(
-                                Icons.chevron_right,
-                                color: AppColors.muted,
-                              ),
-                            ],
-                          ),
-                        ),
+                        showTopBorder: true,
+                      ),
+                      _pickerRow(
+                        icon: Icons.schedule,
+                        label: 'Time',
+                        value: _dueTime.format(context),
+                        onTap: _pickTime,
                       ),
                       const SizedBox(height: 28),
 
@@ -231,13 +278,76 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                           }).toList(),
                         ),
                       ),
+                      const SizedBox(height: 28),
+
+                      const Text(
+                        'Subtasks (optional)',
+                        style: TextStyle(color: AppColors.muted),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _subtaskController,
+                              textCapitalization: TextCapitalization.sentences,
+                              onSubmitted: (_) => _addSubtask(),
+                              decoration: const InputDecoration(
+                                hintText: 'e.g. Read chapter 3',
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: _addSubtask,
+                            icon: const Icon(
+                              Icons.add_circle_outline,
+                              color: AppColors.forest,
+                            ),
+                          ),
+                        ],
+                      ),
+                      ..._subtaskTitles.asMap().entries.map((entry) {
+                        return Container(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          decoration: const BoxDecoration(
+                            border: Border(
+                              bottom: BorderSide(
+                                color: AppColors.hairline,
+                                width: 0.8,
+                              ),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.circle_outlined,
+                                size: 18,
+                                color: AppColors.muted,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(child: Text(entry.value)),
+                              GestureDetector(
+                                onTap: () => setState(
+                                  () => _subtaskTitles.removeAt(entry.key),
+                                ),
+                                child: const Icon(
+                                  Icons.close,
+                                  size: 18,
+                                  color: AppColors.muted,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
                     ],
                   ),
                 ),
               ),
             ),
+
             Padding(
-              padding: const EdgeInsetsGeometry.fromLTRB(20, 8, 20, 16),
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
               child: SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
