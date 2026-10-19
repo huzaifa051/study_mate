@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'screens/welcome_screen.dart';
 import 'theme/app_theme.dart';
+import 'package:flutter/services.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+  ]);
   runApp(const StudyMateApp());
 }
 

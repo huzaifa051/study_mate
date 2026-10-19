@@ -8,6 +8,7 @@ class HomeScreen extends StatelessWidget {
   final void Function(StudyTask) onOpenDetails;
   final void Function(StudyTask) onToggle;
   final void Function(StudyTask) onFocus;
+  final void Function(StudyTask) onDelete;
 
   const HomeScreen({
     super.key,
@@ -15,6 +16,7 @@ class HomeScreen extends StatelessWidget {
     required this.onOpenDetails,
     required this.onToggle,
     required this.onFocus,
+    required this.onDelete,
   });
 
   List<StudyTask> get _pending =>
@@ -196,6 +198,7 @@ class HomeScreen extends StatelessWidget {
                         task: task,
                         onTap: () => onOpenDetails(task),
                         onToggle: () => onToggle(task),
+                        onDelete: () => onDelete(task),
                       ),
                     ),
                     if (completed.isNotEmpty) ...[
@@ -205,6 +208,7 @@ class HomeScreen extends StatelessWidget {
                           task: task,
                           onTap: () => onOpenDetails(task),
                           onToggle: () => onToggle(task),
+                          onDelete: () => onDelete(task),
                         ),
                       ),
                     ],
@@ -237,11 +241,13 @@ class _TaskRow extends StatelessWidget {
   final StudyTask task;
   final VoidCallback onTap;
   final VoidCallback onToggle;
+  final VoidCallback onDelete;
 
   const _TaskRow({
     required this.task,
     required this.onTap,
     required this.onToggle,
+    required this.onDelete,
   });
 
   String get _hourMinute {
@@ -274,114 +280,156 @@ class _TaskRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final done = task.isCompleted;
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 20),
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: const BoxDecoration(
-          border: Border(
-            bottom: BorderSide(color: AppColors.hairline, width: 0.8),
-          ),
+    return Dismissible(
+      key: ValueKey(task.id),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 28),
+        color: const Color(0xFFF3DDD5),
+        child: const Icon(
+          Icons.delete_outline,
+          color: AppColors.clay,
+          size: 26,
         ),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 46,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _hourMinute,
-                    style: const TextStyle(
-                      color: AppColors.muted,
-                      fontSize: 14,
-                    ),
-                  ),
-                  Text(
-                    _period,
-                    style: const TextStyle(
-                      color: AppColors.muted,
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    task.title,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      color: done ? AppColors.muted : AppColors.charcoal,
-                      decoration: done ? TextDecoration.lineThrough : null,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.sand,
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Text(
-                          task.subject,
-                          style: const TextStyle(fontSize: 13),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        task.isOverdue ? 'Overdue · $_shortDate' : _shortDate,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: task.isOverdue
-                              ? AppColors.clay
-                              : AppColors.muted,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            GestureDetector(
-              onTap: onToggle,
-              behavior: HitTestBehavior.opaque,
-              child: Padding(
-                padding: const EdgeInsets.all(6),
-                child: Container(
-                  width: 26,
-                  height: 26,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: done ? AppColors.forest : Colors.transparent,
-                    border: Border.all(
-                      color: done ? AppColors.forest : AppColors.muted,
-                      width: 1.5,
-                    ),
-                  ),
-                  child: done
-                      ? const Icon(
-                          Icons.check,
-                          size: 16,
-                          color: AppColors.stone,
-                        )
-                      : null,
+      ),
+      confirmDismiss: (direction) async {
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            backgroundColor: AppColors.stone,
+            title: Text('Delete task?', style: AppTheme.serif(22)),
+            content: Text('"${task.title}" will be removed.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(color: AppColors.muted),
                 ),
               ),
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text(
+                  'Delete',
+                  style: TextStyle(color: AppColors.clay),
+                ),
+              ),
+            ],
+          ),
+        );
+        return confirmed ?? false;
+      },
+      onDismissed: (direction) => onDelete(),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: const BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: AppColors.hairline, width: 0.8),
             ),
-          ],
+          ),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 46,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _hourMinute,
+                      style: const TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 14,
+                      ),
+                    ),
+                    Text(
+                      _period,
+                      style: const TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      task.title,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: done ? AppColors.muted : AppColors.charcoal,
+                        decoration: done ? TextDecoration.lineThrough : null,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.sand,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Text(
+                            task.subject,
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          task.isOverdue ? 'Overdue · $_shortDate' : _shortDate,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: task.isOverdue
+                                ? AppColors.clay
+                                : AppColors.muted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              GestureDetector(
+                onTap: onToggle,
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: const EdgeInsets.all(6),
+                  child: Container(
+                    width: 26,
+                    height: 26,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: done ? AppColors.forest : Colors.transparent,
+                      border: Border.all(
+                        color: done ? AppColors.forest : AppColors.muted,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: done
+                        ? const Icon(
+                            Icons.check,
+                            size: 16,
+                            color: AppColors.stone,
+                          )
+                        : null,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

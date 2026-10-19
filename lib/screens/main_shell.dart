@@ -131,6 +131,7 @@ class _MainShellState extends State<MainShell> {
                     onOpenDetails: _openDetails,
                     onToggle: _toggleTask,
                     onFocus: _openFocus,
+                    onDelete: _deleteTask,
                   ),
                   InsightsScreen(tasks: _tasks),
                 ],
