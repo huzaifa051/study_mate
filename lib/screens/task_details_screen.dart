@@ -83,7 +83,14 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
       ),
     );
 
-    if (text == null || text.isEmpty || !mounted) return;
+    if (text == null || !mounted) return;
+
+    if (text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Subtask cannot be empty')),
+      );
+      return;
+    }
 
     setState(() {
       task.subtasks.add(Subtask(title: text));

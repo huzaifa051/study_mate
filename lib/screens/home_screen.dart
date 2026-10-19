@@ -9,6 +9,8 @@ class HomeScreen extends StatelessWidget {
   final void Function(StudyTask) onToggle;
   final void Function(StudyTask) onFocus;
   final void Function(StudyTask) onDelete;
+  final String userName;
+  final VoidCallback onEditName;
 
   const HomeScreen({
     super.key,
@@ -17,6 +19,8 @@ class HomeScreen extends StatelessWidget {
     required this.onToggle,
     required this.onFocus,
     required this.onDelete,
+    required this.userName,
+    required this.onEditName,
   });
 
   List<StudyTask> get _pending =>
@@ -83,7 +87,13 @@ class HomeScreen extends StatelessWidget {
                 style: const TextStyle(color: AppColors.muted, fontSize: 13),
               ),
               const SizedBox(height: 4),
-              Text(_greeting, style: AppTheme.serif(30)),
+              GestureDetector(
+                onTap: onEditName,
+                child: Text(
+                  userName.isEmpty ? _greeting : '$_greeting, $userName',
+                  style: AppTheme.serif(28),
+                ),
+              ),
             ],
           ),
         ),

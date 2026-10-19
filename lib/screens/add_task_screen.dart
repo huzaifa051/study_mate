@@ -30,6 +30,12 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   DateTime _dueDate = DateTime.now().add(const Duration(days: 1));
   TimeOfDay _dueTime = const TimeOfDay(hour: 16, minute: 0);
 
+  void _showMessage(String text) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(text)),
+    );
+  }
+
   @override
   void dispose() {
     _titleController.dispose();
@@ -83,7 +89,10 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
 
   void _addSubtask() {
     final text = _subtaskController.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty) {
+      _showMessage('Type a subtask first, then tap +');
+      return;
+    }
     setState(() {
       _subtaskTitles.add(text);
       _subtaskController.clear();
@@ -91,24 +100,34 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   }
 
   void _saveTask() {
-    if (_formKey.currentState!.validate()) {
-      final dueDateTime = DateTime(
-        _dueDate.year,
-        _dueDate.month,
-        _dueDate.day,
-        _dueTime.hour,
-        _dueTime.minute,
-      );
 
-      final task = StudyTask(
-        title: _titleController.text.trim(),
-        subject: _subject,
-        dueDate: dueDateTime,
-        priority: _priority,
-        subtasks: _subtaskTitles.map((t) => Subtask(title: t)).toList(),
-      );
-      Navigator.pop(context, task);
+    if (!_formKey.currentState!.validate()) return;
+    if (_subtaskController.text.trim().isNotEmpty) {
+      _subtaskTitles.add(_subtaskController.text.trim());
+      _subtaskController.clear();
     }
+
+    final dueDateTime = DateTime(
+      _dueDate.year,
+      _dueDate.month,
+      _dueDate.day,
+      _dueTime.hour,
+      _dueTime.minute,
+    );
+
+    if (dueDateTime.isBefore(DateTime.now())) {
+      _showMessage('That due time has already passed. Please pick a later time.');
+      return;
+    }
+
+    final task = StudyTask(
+      title: _titleController.text.trim(),
+      subject: _subject,
+      dueDate: dueDateTime,
+      priority: _priority,
+      subtasks: _subtaskTitles.map((t) => Subtask(title: t)).toList(),
+    );
+    Navigator.pop(context, task);
   }
 
   Widget _pickerRow({
