@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
-import '../screens/home_screen.dart';
+import 'main_shell.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
@@ -63,7 +63,7 @@ class WelcomeScreen extends StatelessWidget {
                         Navigator.pushReplacement(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const HomeScreen(),
+                            builder: (context) => const MainShell(),
                           ),
                         );
                       },
@@ -85,7 +85,7 @@ class WelcomeScreen extends StatelessWidget {
 
 class _RingsPainter extends CustomPainter {
   @override
-  void paint (Canvas canvas, Size size) {
+  void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
 
     final radii = [40.0, 80.0, 120.0];
@@ -93,9 +93,9 @@ class _RingsPainter extends CustomPainter {
 
     for (int i = 0; i < radii.length; i++) {
       final ringPaint = Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1
-          ..color = AppColors.sage.withAlpha(alphas[i]);
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1
+        ..color = AppColors.sage.withAlpha(alphas[i]);
       canvas.drawCircle(center, radii[i], ringPaint);
     }
 

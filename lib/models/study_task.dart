@@ -21,6 +21,7 @@ class StudyTask {
   String priority;
   bool isCompleted;
   List<Subtask> subtasks;
+  DateTime? completedAt;
 
   StudyTask({
     String? id,
@@ -30,11 +31,13 @@ class StudyTask {
     this.priority = 'Medium',
     this.isCompleted = false,
     List<Subtask>? subtasks,
+    this.completedAt,
   }) : id = id ?? DateTime.now().millisecondsSinceEpoch.toString(),
        subtasks = subtasks ?? [];
 
   void toggleStatus() {
     isCompleted = !isCompleted;
+    completedAt = isCompleted ? DateTime.now() : null;
   }
 
   bool get isOverdue {
@@ -85,6 +88,7 @@ class StudyTask {
       'priority': priority,
       'isCompleted': isCompleted,
       'subtasks': subtasks.map((s) => s.toMap()).toList(),
+      'completedAt': completedAt?.toIso8601String(),
     };
   }
 
@@ -98,6 +102,9 @@ class StudyTask {
       priority: map['priority'],
       isCompleted: map['isCompleted'],
       subtasks: rawSubtasks.map((s) => Subtask.fromMap(s)).toList(),
+      completedAt: map['completedAt'] != null
+          ? DateTime.parse(map['completedAt'])
+          : null,
     );
   }
 }

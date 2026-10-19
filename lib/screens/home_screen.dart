@@ -1,101 +1,37 @@
 import 'package:flutter/material.dart';
 import '../models/study_task.dart';
-import '../theme/app_theme.dart';
 import '../theme/app_colors.dart';
-import '../services/storage_service.dart';
-import 'add_task_screen.dart';
-import 'task_details_screen.dart';
+import '../theme/app_theme.dart';
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+class HomeScreen extends StatelessWidget {
+  final List<StudyTask> tasks;
+  final void Function(StudyTask) onOpenDetails;
+  final void Function(StudyTask) onToggle;
+  final void Function(StudyTask) onFocus;
 
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
+  const HomeScreen({
+    super.key,
+    required this.tasks,
+    required this.onOpenDetails,
+    required this.onToggle,
+    required this.onFocus,
+  });
 
-class _HomeScreenState extends State<HomeScreen> {
-  final StorageService _storage = StorageService();
-  List<StudyTask> _tasks = [];
-  bool _isLoading = true;
+  List<StudyTask> get _pending =>
+      tasks.where((t) => !t.isCompleted).toList()
+        ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
 
-  @override
-  void initState() {
-    super.initState();
-    _loadTasks();
-  }
+  List<StudyTask> get _completed =>
+      tasks.where((t) => t.isCompleted).toList()
+        ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
 
-  Future<void> _loadTasks() async {
-    final tasks = await _storage.loadTasks();
-    if (!mounted) return;
-    setState(() {
-      _tasks = tasks;
-      _isLoading = false;
-    });
-  }
-
-  Future<void> _saveTasks() async {
-    await _storage.saveTasks(_tasks);
-  }
-
-  void _toggleTask(StudyTask task) {
-    setState(() {
-      task.toggleStatus();
-    });
-    _saveTasks();
-  }
-
-  void _deleteTasks(StudyTask task) {
-    setState(() {
-      _tasks.remove(task);
-    });
-    _saveTasks();
-  }
-
-  Future<void> _openAddTask() async {
-    final newTask = await Navigator.push<StudyTask>(
-      context,
-      MaterialPageRoute(builder: (context) => const AddTaskScreen()),
-    );
-
-    if (newTask == null || !mounted) return;
-
-    setState(() {
-      _tasks.add(newTask);
-    });
-    _saveTasks();
-  }
-
-  Future<void> _openDetails(StudyTask task) async {
-    final action = await Navigator.push<String>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => TaskDetailsScreen(
-          task: task,
-          onChanged: _saveTasks,
-        ),
-      ),
-    );
-
-    if (!mounted) return;
-
-    if (action == 'toggle') {
-      _toggleTask(task);
-    } else if (action == 'delete') {
-      _deleteTasks(task);
-    } else {
-      setState(() {});
-    }
-  }
-
-  int get _completedCount => _tasks.where((t) => t.isCompleted).length;
-
-  double get _progress => _tasks.isEmpty ? 0 : _completedCount / _tasks.length;
+  double get _progress => tasks.isEmpty ? 0 : _completed.length / tasks.length;
 
   String get _greeting {
     final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good Morning';
+    if (hour < 12) return 'Good morning';
     if (hour < 17) return 'Good afternoon';
-    return 'Good Evening';
+    return 'Good evening';
   }
 
   String get _todayText {
@@ -108,7 +44,6 @@ class _HomeScreenState extends State<HomeScreen> {
       'Saturday',
       'Sunday',
     ];
-
     const months = [
       'January',
       'February',
@@ -124,10 +59,200 @@ class _HomeScreenState extends State<HomeScreen> {
       'December',
     ];
     final now = DateTime.now();
-    return '${days[now.weekday - 1]}, ${now.day}, ${months[now.month - 1]}';
+    return '${days[now.weekday - 1]}, ${now.day} ${months[now.month - 1]}';
   }
 
-  String _formatDue(DateTime d) {
+  @override
+  Widget build(BuildContext context) {
+    final pending = _pending;
+    final completed = _completed;
+    final nextTask = pending.isEmpty ? null : pending.first;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _todayText,
+                style: const TextStyle(color: AppColors.muted, fontSize: 13),
+              ),
+              const SizedBox(height: 4),
+              Text(_greeting, style: AppTheme.serif(30)),
+            ],
+          ),
+        ),
+
+        Container(
+          width: double.infinity,
+          margin: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: AppColors.forest,
+            borderRadius: BorderRadius.circular(22),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Today',
+                    style: AppTheme.serif(22, color: AppColors.stone),
+                  ),
+                  Text(
+                    '${completed.length} of ${tasks.length} done',
+                    style: const TextStyle(color: AppColors.sage),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              LinearProgressIndicator(
+                value: _progress,
+                minHeight: 4,
+                backgroundColor: const Color(0xFF4D6B5B),
+                color: AppColors.sage,
+                borderRadius: BorderRadius.circular(2),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      nextTask != null
+                          ? 'Next: ${nextTask.title}'
+                          : (tasks.isEmpty
+                                ? 'Add a task to get started'
+                                : 'All caught up'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFFC9D2C4),
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                  if (nextTask != null) ...[
+                    const SizedBox(width: 10),
+                    GestureDetector(
+                      onTap: () => onFocus(nextTask),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.clay,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.play_arrow_outlined,
+                              size: 18,
+                              color: Colors.white,
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              'Focus',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        Expanded(
+          child: tasks.isEmpty
+              ? const _EmptyState()
+              : ListView(
+                  padding: const EdgeInsets.only(bottom: 24),
+                  children: [
+                    const _SectionTitle('Up next'),
+                    if (pending.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.fromLTRB(20, 4, 20, 12),
+                        child: Text(
+                          'All tasks completed. Nice work!',
+                          style: TextStyle(color: AppColors.muted),
+                        ),
+                      ),
+                    ...pending.map(
+                      (task) => _TaskRow(
+                        task: task,
+                        onTap: () => onOpenDetails(task),
+                        onToggle: () => onToggle(task),
+                      ),
+                    ),
+                    if (completed.isNotEmpty) ...[
+                      const _SectionTitle('Completed'),
+                      ...completed.map(
+                        (task) => _TaskRow(
+                          task: task,
+                          onTap: () => onOpenDetails(task),
+                          onToggle: () => onToggle(task),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  final String text;
+
+  const _SectionTitle(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 22, 20, 6),
+      child: Text(
+        text,
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+}
+
+class _TaskRow extends StatelessWidget {
+  final StudyTask task;
+  final VoidCallback onTap;
+  final VoidCallback onToggle;
+
+  const _TaskRow({
+    required this.task,
+    required this.onTap,
+    required this.onToggle,
+  });
+
+  String get _hourMinute {
+    final hour = task.dueDate.hour % 12 == 0 ? 12 : task.dueDate.hour % 12;
+    final minute = task.dueDate.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
+  String get _period => task.dueDate.hour >= 12 ? 'PM' : 'AM';
+
+  String get _shortDate {
     const months = [
       'Jan',
       'Feb',
@@ -142,143 +267,19 @@ class _HomeScreenState extends State<HomeScreen> {
       'Nov',
       'Dec',
     ];
-    return '${d.day} ${months[d.month - 1]}';
+    return '${task.dueDate.day} ${months[task.dueDate.month - 1]}';
   }
 
   @override
   Widget build(BuildContext context) {
-    final sortedTasks = [..._tasks]
-      ..sort((a, b) {
-        if (a.isCompleted != b.isCompleted) {
-          return a.isCompleted ? 1 : -1;
-        }
-        return a.dueDate.compareTo(b.dueDate);
-      });
-    return Scaffold(
-      body: SafeArea(
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _todayText,
-                          style: const TextStyle(
-                            color: AppColors.muted,
-                            fontSize: 13,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text('$_greeting, Huzaifa', style: AppTheme.serif(26)),
-                      ],
-                    ),
-                  ),
+    final done = task.isCompleted;
 
-                  Container(
-                    width: double.infinity,
-                    margin: const EdgeInsets.symmetric(horizontal: 20),
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      color: AppColors.forest,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Today',
-                              style: AppTheme.serif(20, color: AppColors.stone),
-                            ),
-                            Text(
-                              '$_completedCount of ${_tasks.length} done',
-                              style: const TextStyle(color: AppColors.sage),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-                        LinearProgressIndicator(
-                          value: _progress,
-                          minHeight: 4,
-                          backgroundColor: const Color(0xFF4D6B5B),
-                          color: AppColors.sage,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(20, 22, 20, 6),
-                    child: Text(
-                      'Your tasks',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: sortedTasks.isEmpty
-                        ? const _EmptyState()
-                        : ListView.builder(
-                            padding: EdgeInsets.only(bottom: 90),
-                            itemCount: sortedTasks.length,
-                            itemBuilder: (context, index) {
-                              final task = sortedTasks[index];
-                              return _TaskRow(
-                                task: task,
-                                dueText: _formatDue(task.dueDate),
-                                onTap: () => _openDetails(task),
-                                onToggle: () => _toggleTask(task),
-                                onDelete: () => _deleteTasks(task),
-                              );
-                            },
-                          ),
-                  ),
-                ],
-              ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _openAddTask,
-        backgroundColor: AppColors.clay,
-        foregroundColor: Colors.white,
-        shape: const CircleBorder(),
-        child: const Icon(Icons.add),
-      ),
-    );
-  }
-}
-
-class _TaskRow extends StatelessWidget {
-  final StudyTask task;
-  final String dueText;
-  final VoidCallback onTap;
-  final VoidCallback onToggle;
-  final VoidCallback onDelete;
-
-  const _TaskRow({
-    required this.task,
-    required this.dueText,
-    required this.onTap,
-    required this.onToggle,
-    required this.onDelete,
-  });
-
-  @override
-  Widget build(BuildContext context) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 20),
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: const BoxDecoration(
           border: Border(
             bottom: BorderSide(color: AppColors.hairline, width: 0.8),
@@ -286,25 +287,29 @@ class _TaskRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            GestureDetector(
-              onTap: onToggle,
-              child: Container(
-                width: 24,
-                height: 24,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: task.isCompleted ? AppColors.forest : Colors.transparent,
-                  border: Border.all(
-                    color: task.isCompleted ? AppColors.forest : AppColors.muted,
-                    width: 1.5,
+            SizedBox(
+              width: 46,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _hourMinute,
+                    style: const TextStyle(
+                      color: AppColors.muted,
+                      fontSize: 14,
+                    ),
                   ),
-                ),
-                child: task.isCompleted
-                    ? const Icon(Icons.check, size: 15, color: AppColors.stone)
-                    : null,
+                  Text(
+                    _period,
+                    style: const TextStyle(
+                      color: AppColors.muted,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -314,34 +319,30 @@ class _TaskRow extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w500,
-                      color: task.isCompleted
-                          ? AppColors.muted
-                          : AppColors.charcoal,
-                      decoration: task.isCompleted
-                          ? TextDecoration.lineThrough
-                          : null,
+                      color: done ? AppColors.muted : AppColors.charcoal,
+                      decoration: done ? TextDecoration.lineThrough : null,
                     ),
                   ),
-                  const SizedBox(height: 5),
+                  const SizedBox(height: 6),
                   Row(
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 9,
-                          vertical: 3,
+                          horizontal: 12,
+                          vertical: 4,
                         ),
                         decoration: BoxDecoration(
                           color: AppColors.sand,
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(14),
                         ),
                         child: Text(
                           task.subject,
-                          style: const TextStyle(fontSize: 12),
+                          style: const TextStyle(fontSize: 13),
                         ),
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        task.isOverdue ? 'Overdue . $dueText' : 'Due $dueText',
+                        task.isOverdue ? 'Overdue · $_shortDate' : _shortDate,
                         style: TextStyle(
                           fontSize: 12,
                           color: task.isOverdue
@@ -354,9 +355,31 @@ class _TaskRow extends StatelessWidget {
                 ],
               ),
             ),
-            IconButton(
-              onPressed: onDelete,
-              icon: const Icon(Icons.delete_outline, color: AppColors.muted),
+            GestureDetector(
+              onTap: onToggle,
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: const EdgeInsets.all(6),
+                child: Container(
+                  width: 26,
+                  height: 26,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: done ? AppColors.forest : Colors.transparent,
+                    border: Border.all(
+                      color: done ? AppColors.forest : AppColors.muted,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: done
+                      ? const Icon(
+                          Icons.check,
+                          size: 16,
+                          color: AppColors.stone,
+                        )
+                      : null,
+                ),
+              ),
             ),
           ],
         ),
